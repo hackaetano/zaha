@@ -1,6 +1,5 @@
 const cheerio = require('cheerio');
 const request = require('request');
-const http = require('http');
 
 class Zaha {
     constructor () {
@@ -56,6 +55,7 @@ class Zaha {
         const $ = cheerio.load(body, { decodeEntities: false });
 
         let realStates = $('.hbs-results-pages__property-card');
+        let limit = 1;
 
         realStates.map((index, item) => {          
             this.singleRealState.characteristics.title = $(item).find('.js-card-title').html();
@@ -65,9 +65,13 @@ class Zaha {
             this.singleRealState.source.url = $(item).find('.js-card-title').attr('href');
             this.singleRealState.characteristics.pricing.condominium = this.parseValues($(item).find('.js-condo-price').html());
 
-            
-            this.singleRealState.location = this.getAddress($, item, '.js-property-card-address');
+            limit = limit + 1;
 
+            if(limit > 4) {
+                setTimeout(() => {
+                    this.singleRealState.location = this.getAddress($, item, '.js-property-card-address');
+                }, 5000);
+            };
 
             this.getBody('https://www.vivareal.com.br/' + this.singleRealState.source.url, this.getAdvancedInfo.bind(this));
 
@@ -83,43 +87,22 @@ class Zaha {
             all: []
         };
 
-        advancedInfo.name = $('.creci').prev().html();
-        advancedInfo.code = $('.js-title-code').html();
-        advancedInfo.propertyType = $('.js-detail-type-value').html();
-        advancedInfo.categories = this.getCategories($, '.js-title-main-info');
-        advancedInfo.purchase = this.parseValues($('.js-detail-sale-price').html());
-        advancedInfo.rent = this.parseValues($('.js-detail-rent-price').html());
-        advancedInfo.tax = this.parseValues($('.js-detail-iptu-price').html());
-        advancedInfo.rooms = this.parseValues($('.js-detail-rooms').find('.bF').html());
-        advancedInfo.suites = this.parseValues($('.js-detail-rooms').find('.bJ').html());
-        advancedInfo.bathrooms = this.parseValues($('.js-detail-bathrooms').find('span').html());
-        advancedInfo.kitchens = this.checkForEssencials($, 'cozinha');
-        advancedInfo.serviceArea = this.checkForEssencials($, 'área de serviço');
-        advancedInfo.parkingSpace = this.parseValues($('.js-detail-parking-spaces').find('.bF').html());
-        advancedInfo.all.push($('.bS > li').html());
-
-        this.joinInfos(advancedInfo);
-        
-    }
-
-    joinInfos (advancedInfo) {
-        this.singleRealState.source.name = advancedInfo.name;
-        this.singleRealState.source.code = advancedInfo.code;
-        this.singleRealState.characteristics.propertyType = advancedInfo.propertyType;
-        this.singleRealState.characteristics.categories = advancedInfo.categories;
-        this.singleRealState.characteristics.pricing.purchase = advancedInfo.purchase;
-        this.singleRealState.characteristics.pricing.rent = advancedInfo.rent;
-        this.singleRealState.characteristics.pricing.tax = advancedInfo.tax;
-        this.singleRealState.features.essencials.rooms = advancedInfo.rooms;
-        this.singleRealState.features.essencials.suites = advancedInfo.suites;
-        this.singleRealState.features.essencials.bathrooms = advancedInfo.bathrooms;
-        this.singleRealState.features.essencials.kitchens = advancedInfo.kitchens;
-        this.singleRealState.features.essencials.serviceArea = advancedInfo.serviceArea;
-        this.singleRealState.features.essencials.parkingSpace = advancedInfo.parkingSpace;
-        this.singleRealState.features.amenities.all = advancedInfo.all;
+        this.singleRealState.source.name = $('.creci').prev().html();
+        this.singleRealState.source.code = $('.js-title-code').html();
+        this.singleRealState.characteristics.propertyType = $('.js-detail-type-value').html();
+        this.singleRealState.characteristics.categories = this.getCategories($, '.js-title-main-info');
+        this.singleRealState.characteristics.pricing.purchase = this.parseValues($('.js-detail-sale-price').html());
+        this.singleRealState.characteristics.pricing.rent = this.parseValues($('.js-detail-rent-price').html());
+        this.singleRealState.characteristics.pricing.tax = this.parseValues($('.js-detail-iptu-price').html());
+        this.singleRealState.features.essencials.rooms = this.parseValues($('.js-detail-rooms').find('.bF').html());
+        this.singleRealState.features.essencials.suites = this.parseValues($('.js-detail-rooms').find('.bJ').html());
+        this.singleRealState.features.essencials.bathrooms = this.parseValues($('.js-detail-bathrooms').find('span').html());
+        this.singleRealState.features.essencials.kitchens = this.checkForEssencials($, 'cozinha');
+        this.singleRealState.features.essencials.serviceArea = this.checkForEssencials($, 'área de serviço');
+        this.singleRealState.features.essencials.parkingSpace = this.parseValues($('.js-detail-parking-spaces').find('.bF').html());
+        this.singleRealState.features.amenities.all.push($('.bS > li').html());
 
         this.post();
-
     }
 
     checkForEssencials ($, query) {
@@ -173,7 +156,6 @@ class Zaha {
             body = JSON.parse(body);
             let addressComponents = body.address_components;
 
-
             addressComponents.map(item => {
                 if(item.type.includes('postal_code')) addressObj.zipcode = item.long_name;
                 if(item.type.includes('route')) addressObj.street = item.long_name;
@@ -187,6 +169,7 @@ class Zaha {
             });
 
         })        
+        // console.log(addressObj);
     }
 
     post () {
